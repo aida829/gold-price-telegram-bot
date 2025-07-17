@@ -1,71 +1,96 @@
 import asyncio
-import datetime
-import json
-import random
 import requests
+from bs4 import BeautifulSoup
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
+from datetime import datetime
 import jdatetime
-from gif_generator import generate_gif_with_date
+import random
 
-TELEGRAM_TOKEN =TELEGRAM_TOKEN = "7917634871:AAEfARByraLax2uiHclWMyz40fe-76Em8Kc"
+API_TOKEN = "7917634871:AAEfARByraLax2uiHclWMyz40fe-76Em8Kc"
+CHANNEL_ID = "@talahatam"  # آیدی کانال یا گروه تلگرام
+GIF_PATH = "animated_logo.gif"  # نام فایل گیف لوگو (باید کنار main.py باشه)
 
-bot = Bot(token=TELEGRAM_TOKEN)
+bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-async def fetch_gold_prices():
-    url = "https://sarafiyaran.com/"
-    response = requests.get(url)
-    # اینجا کد استخراج قیمت‌ها از HTML سایت رو اضافه کن
-    # به عنوان نمونه فرضی:
-    prices = {
-        "gold_24": "1400000",
-        "gold_18": "1050000",
-        "coin_emam": "15000000",
-        "coin_nim": "8000000",
-        "coin_rob": "4000000",
-        "coin_bahar": "14000000"
-    }
-    return prices
+motivational_texts = [
+    "امروز را با امید شروع کن و با موفقیت به پایان برسان!",
+    "هر روز فرصتی است برای بهتر شدن، استفاده کن!",
+    "با تلاش و صبر، پیروزی نزدیک است.",
+    "موفقیت نتیجه استمرار است، تو قادری!",
+    "امروز یک قدم به هدف نزدیک‌تر شدی.",
+    "ذهن مثبت، زندگی مثبت می‌آفریند.",
+    "هر شکست، پلی به سوی موفقیت است.",
+    "قدرت درونت را باور کن و حرکت کن.",
+    "لحظه‌های امروزت را به بهترین شکل بساز.",
+    "تو بهترین نسخه خودت هستی، بدرخش!",
+    "چالش‌ها فقط موانع نیستند، فرصت‌اند.",
+    "هر روز را با انرژی شروع کن و ادامه بده.",
+    "موفقیت در انتظار توست، پیش برو!",
+    "با خودت مهربان باش، شایسته‌اش هستی.",
+    "امروز، روز تغییر توست.",
+    "آینده روشن‌تر از آن است که فکرش را می‌کنی.",
+    "با امید و تلاش، ناممکن‌ها ممکن می‌شوند.",
+    "هر صبح یک شروع تازه است، قدرش را بدان.",
+    "تو قدرت ایجاد هر چیزی را داری.",
+    "زندگی را با عشق و تلاش بساز."
+]
 
-async def send_price_update():
-    prices = await fetch_gold_prices()
-    now = datetime.datetime.now()
+def get_dates():
+    now = datetime.now()
     persian_date = jdatetime.datetime.now().strftime("%Y/%m/%d")
     gregorian_date = now.strftime("%Y-%m-%d")
-    
-    # تولید گیف با تاریخ
-    gif_path = generate_gif_with_date(persian_date, gregorian_date)
-    
-    text = (
-        f"قیمت‌های امروز ({persian_date} | {gregorian_date}):\n\n"
-        f"طلای 24 عیار: {prices['gold_24']} تومان\n"
-        f"طلای 18 عیار: {prices['gold_18']} تومان\n"
-        f"سکه امامی: {prices['coin_emam']} تومان\n"
-        f"نیم سکه: {prices['coin_nim']} تومان\n"
-        f"ربع سکه: {prices['coin_rob']} تومان\n"
-        f"سکه بهار آزادی: {prices['coin_bahar']} تومان\n\n"
-        f"{random.choice(load_motivations())}"
-    )
-    
-    await bot.send_animation(chat_id='@https://t.me/talahatam animation=open(gif_path, 'rb'), caption=text)
+    return persian_date, gregorian_date
 
-def load_motivations():
-    with open('motivations.json', 'r', encoding='utf-8') as f:
-        return json.load(f)
+def get_prices():
+    url = "https://sarafiyaran.com"
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
+        
+        # --- اینها شناسه‌ها فرضی هستن، ممکنه لازم باشه اصلاح کنی ---
+        gold_24 = soup.find("span", {"id": "gold_24_price"}).text.strip()  
+        gold_18 = soup.find("span", {"id": "gold_18_price"}).text.strip()  
+        seke_emami = soup.find("span", {"id": "seke_emami_price"}).text.strip()  
+        
+        return f"طلا 24 عیار: {gold_24} تومان\nطلا 18 عیار: {gold_18} تومان\nسکه امامی: {seke_emami} تومان"
+    except Exception as e:
+        return "قیمت‌ها فعلا در دسترس نیست."
 
-async def scheduler():
+async def send_daily_update(chat_id):
+    persian_date, gregorian_date = get_dates()
+    prices_text = get_prices()
+    text = f"قیمت‌های امروز ({persian_date} - {gregorian_date}):\n\n{prices_text}"
+    with open(GIF_PATH, 'rb') as gif_file:
+        await bot.send_animation(chat_id=chat_id, animation=gif_file, caption=text)
+
+async def send_market_close(chat_id):
+    text = random.choice(motivational_texts)
+    await bot.send_message(chat_id=chat_id, text=f"پایان معاملات امروز!\n\n{text}")
+
+async def scheduler(chat_id):
+    sent_update_today = False
+    sent_close_today = False
     while True:
-        now = datetime.datetime.now()
-        # ساعت 9 صبح برای ارسال قیمت
-        if now.hour == 9 and now.minute == 0:
-            await send_price_update()
-        # ساعت 20 پایان معاملات
-        if now.hour == 20 and now.minute == 0:
-            await bot.send_message(chat_id='@your_channel_or_chat_id', text="ساعت ۸ شب است. معاملات امروز به پایان رسید. برای فردا انرژی مثبت داشته باشید!")
-        await asyncio.sleep(60)
+        now = datetime.now()
+        if now.hour == 9 and now.minute == 0 and not sent_update_today:
+            await send_daily_update(chat_id)
+            sent_update_today = True
+        if now.hour == 20 and now.minute == 0 and not sent_close_today:
+            await send_market_close(chat_id)
+            sent_close_today = True
+        if now.hour == 21:
+            sent_update_today = False
+            sent_close_today = False
+        await asyncio.sleep(30)
+
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    await message.reply("ربات شروع به کار کرد و قیمت‌ها را هر روز ساعت ۹ صبح و پایان معاملات ساعت ۸ شب ارسال خواهد کرد.")
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(scheduler())
-    executor.start_polling(dp)
+    loop.create_task(scheduler(CHANNEL_ID))
+    executor.start_polling(dp, skip_updates=True)
