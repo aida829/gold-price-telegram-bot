@@ -8,7 +8,7 @@ from aiogram.utils import executor
 import jdatetime
 from gif_generator import generate_gif_with_date
 
-TELEGRAM_TOKEN =7917634871:AAEfARByraLax2uiHclWMyz40fe-76Em8Kc
+TELEGRAM_TOKEN =TELEGRAM_TOKEN = "7917634871:AAEfARByraLax2uiHclWMyz40fe-76Em8Kc"
 
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
