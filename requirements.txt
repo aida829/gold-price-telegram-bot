@@ -1,4 +1,4 @@
 aiogram==2.25.1
 requests==2.31.0
 Pillow==9.0.0
-jdatetime==3.8.5
+jdatetime==5.2.0
